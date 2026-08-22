@@ -15,7 +15,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -328,6 +329,17 @@ select {
   border-radius: 6px;
 }
 
+textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 12px;
+  color: #18212f;
+  background: #fff;
+  border: 1px solid #cfd7e3;
+  border-radius: 6px;
+  resize: vertical;
+}
+
 button[type="submit"],
 .button-row button {
   min-height: 40px;
@@ -353,6 +365,12 @@ button:disabled {
   color: #8a1f1f;
   background: #fff;
   border-color: #f0b8b4;
+}
+
+.button-row .secondary {
+  color: #17324d;
+  background: #fff;
+  border-color: #b8c8dc;
 }
 
 .status {
@@ -494,6 +512,26 @@ button:disabled {
 .approval {
   display: grid;
   gap: 14px;
+}
+
+.send-back-panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: #fffaf0;
+  border: 1px solid #f3cf88;
+  border-radius: 6px;
+}
+
+.send-back-panel label {
+  color: #18212f;
+  font-weight: 800;
+}
+
+.send-back-panel p {
+  margin: 0;
+  color: #667386;
+  font-size: 13px;
 }
 
 .approval-top {

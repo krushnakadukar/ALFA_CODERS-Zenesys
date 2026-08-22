@@ -202,8 +202,9 @@ export async function decideApproval(user: AuthUser, approvalId: string, decisio
         : decision === "Sent Back"
           ? "Sent Back"
           : "Information Requested";
+  const currentOwnerId = requestStatus === "Sent Back" || requestStatus === "Information Requested" ? approval.request.employeeId : null;
   const updates: Prisma.PrismaPromise<unknown>[] = [
-    prisma.request.update({ where: { id: approval.requestId }, data: { status: requestStatus, currentOwnerId: null } }),
+    prisma.request.update({ where: { id: approval.requestId }, data: { status: requestStatus, currentOwnerId } }),
     prisma.auditLog.create({ data: { id: shortId("AUD"), requestId: approval.requestId, actorId: user.employeeId, eventType: normalizePolicyKey(decision), eventAt: now, details: comments ?? `${approval.stage} ${decision}` } }),
     prisma.notification.create({ data: { id: shortId("N"), requestId: approval.requestId, recipientEmployeeId: approval.request.employeeId, message: `Request ${approval.requestId} ${decision.toLowerCase()}`, status: "Unread", createdAt: now } })
   ];

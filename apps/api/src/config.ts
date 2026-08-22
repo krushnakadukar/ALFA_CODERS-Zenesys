@@ -17,3 +17,4 @@ const envSchema = z.object({
 });
 
 export const config = envSchema.parse(process.env);
+

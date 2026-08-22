@@ -1159,3 +1159,24 @@ dd {
     grid-template-columns: 1fr;
   }
 }
+
+.description-box {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  background: #f9fafb;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+}
+
+.description-box span {
+  color: #667386;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.description-box p {
+  margin: 0;
+  color: #18212f;
+  white-space: pre-wrap;
+}

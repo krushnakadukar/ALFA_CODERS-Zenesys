@@ -24,6 +24,7 @@ The goal is to reduce manual coordination, improve approval transparency, and gi
 - Request creation and lifecycle tracking
 - Approval inbox with approve, reject, and send-back actions
 - Send-back flow for approvers to request more information from employees
+- Persistent login session, active view, and selected request restore
 - Organization hierarchy and reporting structure view
 - Resource utilization and capacity insights
 - Analytics for open requests, escalations, bottlenecks, and notifications
@@ -120,11 +121,12 @@ apps/
 
 ## Current Implementation
 
-The current implementation includes the base monorepo structure, backend API, React workflow console, Prisma schema and migrations, seed data, tests, Docker Compose setup, and an approval send-back workflow for requesting additional details from employees.
+The current implementation includes the base monorepo structure, backend API, React workflow console, Prisma schema and migrations, seed data, tests, Docker Compose setup, an approval send-back workflow for requesting additional details from employees, and frontend persistence for restoring the signed-in session, active workspace view, and selected request after refresh.
 
 ## Repository
 
 ```text
 https://github.com/krushnakadukar/ALFA_CODERS-Zenesys.git
 ```
+
 

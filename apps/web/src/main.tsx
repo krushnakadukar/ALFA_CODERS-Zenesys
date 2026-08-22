@@ -11,6 +11,11 @@ type ApprovalDecision = "approve" | "reject" | "send-back";
 type NavItem = { view: View; label: string };
 type DashboardKind = "employee" | "manager" | "hr" | "finance" | "departmentHead";
 
+const SESSION_KEY = "orgflow-session";
+const VIEW_KEY = "orgflow-view";
+const SELECTED_REQUEST_KEY = "orgflow-selected-request";
+const views: View[] = ["dashboard", "requests", "tracking", "approvals", "resources", "analytics", "governance", "ai", "org"];
+
 const mvpRequestTypes = ["Leave", "Expense", "Asset Request", "Resource Request", "Work From Home"];
 const requestFormConfig: Record<string, Array<{ key: string; label: string; type?: string; options?: string[] }>> = {
   Leave: [
@@ -85,9 +90,30 @@ function dashboardKind(me: any, session: Session | null): DashboardKind {
   return "employee";
 }
 
+function isView(value: string | null): value is View {
+  return !!value && views.includes(value as View);
+}
+
+function readStoredSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Session;
+    if (!parsed?.accessToken || !parsed?.refreshToken || !parsed?.user?.employeeId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredView(): View {
+  const stored = localStorage.getItem(VIEW_KEY);
+  return isView(stored) ? stored : "dashboard";
+}
+
 function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [view, setView] = useState<View>("dashboard");
+  const [session, setSession] = useState<Session | null>(() => readStoredSession());
+  const [view, setView] = useState<View>(() => readStoredView());
   const [me, setMe] = useState<any>(null);
   const [orgTree, setOrgTree] = useState<any>(null);
   const [requestTypes, setRequestTypes] = useState<any[]>([]);
@@ -97,7 +123,7 @@ function App() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [governance, setGovernance] = useState<any>(null);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>(() => localStorage.getItem(SELECTED_REQUEST_KEY) ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const selected = requests.find((item) => item.id === selectedId) ?? requests[0];
@@ -107,9 +133,13 @@ function App() {
   const currentDashboard = dashboardKind(me, session);
 
   const clearSession = useCallback((message?: string) => {
-    localStorage.removeItem("orgflow-session");
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(VIEW_KEY);
+    localStorage.removeItem(SELECTED_REQUEST_KEY);
     setSession(null);
     setMe(null);
+    setView("dashboard");
+    setSelectedId("");
     if (message) setError(message);
   }, []);
 
@@ -148,12 +178,20 @@ function App() {
   }
 
   useEffect(() => {
-    localStorage.removeItem("orgflow-session");
-  }, []);
-
-  useEffect(() => {
     void refreshAll();
   }, [session]);
+
+  useEffect(() => {
+    if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  }, [session]);
+
+  useEffect(() => {
+    if (session) localStorage.setItem(VIEW_KEY, view);
+  }, [session, view]);
+
+  useEffect(() => {
+    if (session && selectedId) localStorage.setItem(SELECTED_REQUEST_KEY, selectedId);
+  }, [session, selectedId]);
 
   useEffect(() => {
     if (!navigation.some((item) => item.view === view)) setView("dashboard");
@@ -161,6 +199,7 @@ function App() {
 
   async function login(email: string, password: string) {
     const next = await makeApi(null)("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+    localStorage.setItem(SESSION_KEY, JSON.stringify(next));
     setSession(next);
   }
 

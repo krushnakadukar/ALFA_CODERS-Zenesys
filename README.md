@@ -31,24 +31,7 @@ The goal is to reduce manual coordination, improve approval transparency, and gi
 - Attachment support for required proofs and documents
 - SLA worker support for workflow monitoring and escalation
 
-## Tech Stack
 
-- React
-- Vite
-- TypeScript
-- Node.js
-- Express
-- Prisma
-- MySQL
-- Vitest
-
-## Project Structure
-
-```text
-apps/
-  api/   Backend API, authentication, workflows, Prisma schema, workers, and tests
-  web/   React frontend for the OrgFlow workflow console
-```
 
 ## Application Modules
 

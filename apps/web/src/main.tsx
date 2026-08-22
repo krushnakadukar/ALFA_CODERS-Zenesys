@@ -354,7 +354,7 @@ function NewRequest({ requestTypes, submit }: { requestTypes: any[]; submit: (pa
 
 function RequestDetail({ request }: { request?: RequestRecord }) {
   if (!request) return <section><p className="muted">No request selected.</p></section>;
-  return <section><div className="section-heading"><h2>{request.id}</h2><Status status={request.status} /></div><h3>{request.title}</h3><p className="muted">{request.requestType} · {request.priority} · Owner {request.currentOwner?.name ?? "Unassigned"}</p><div className="context-grid">{(request.context ?? []).map((item: any) => <div key={`${item.key}-${item.id}`}><span>{item.sourceType}</span><strong>{pretty(item.key)}</strong><p>{item.value}</p></div>)}</div><AttachmentList attachments={request.attachments ?? []} /><h4>Timeline</h4><ol className="timeline">{(request.auditLogs ?? []).map((item: any) => <li key={item.id}><strong>{item.eventType}</strong><span>{formatDate(item.eventAt)} · {item.actor?.name ?? "System"}</span><p>{item.details}</p></li>)}</ol></section>;
+  return <section><div className="section-heading"><h2>{request.id}</h2><Status status={request.status} /></div><h3>{request.title}</h3><p className="muted">{request.requestType} · {request.priority} · Owner {request.currentOwner?.name ?? "Unassigned"}</p><div className="context-grid">{(request.context ?? []).map((item: any) => <div key={`${item.key}-${item.id}`}><span>{item.sourceType}</span><strong>{pretty(item.key)}</strong><p>{item.value}</p></div>)}</div><AttachmentList attachments={request.attachments ?? []} /><h4>Timeline</h4><ol className="timeline">{(request.auditLogs ?? []).map((item: any) => <li key={item.id}><strong>{prettyTimelineEvent(item.eventType)}</strong><span>{formatDate(item.eventAt)} · {item.actor?.name ?? "System"}</span><p>{timelineDetails(item, request)}</p></li>)}</ol></section>;
 }
 
 function Tracking({ requests, selected, select }: { requests: RequestRecord[]; selected?: RequestRecord; select: (id: string) => void }) {
@@ -543,6 +543,23 @@ function makeApi(session: Session | null, onUnauthorized?: (message: string) => 
   };
 }
 
+function prettyTimelineEvent(eventType: string) {
+  return pretty(eventType.toLowerCase());
+}
+
+function timelineDetails(item: any, request: RequestRecord) {
+  if (item.eventType === "ROUTED") return routingSummary(request);
+  if (item.eventType === "ROUTING_EXCEPTION") return "The system could not find a valid approver. HR or an admin needs to review the route.";
+  return item.details || "No additional details.";
+}
+
+function routingSummary(request: RequestRecord) {
+  const approvers = (request.approvals ?? []).map((approval: any) => approval.approver?.name).filter(Boolean);
+  const uniqueApprovers = [...new Set(approvers)];
+  if (uniqueApprovers.length) return `Routed for approval to ${uniqueApprovers.join(" -> ")}.`;
+  if (request.currentOwner?.name) return `Routed to ${request.currentOwner.name} for approval.`;
+  return "Routed according to company approval policy.";
+}
 function formatDate(value: string) {
   return new Date(value).toLocaleString();
 }
@@ -626,3 +643,4 @@ function label(view: View) {
 }
 
 createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);
+

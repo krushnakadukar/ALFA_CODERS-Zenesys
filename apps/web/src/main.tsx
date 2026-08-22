@@ -7,6 +7,7 @@ type View = "dashboard" | "requests" | "tracking" | "approvals" | "resources" | 
 type Session = { accessToken: string; refreshToken: string; user: { employeeId: string; roleName: string; permissions: string[] } };
 type RequestRecord = { id: string; employeeId?: string; requestType: string; status: string; priority: string; title: string; reason?: string; createdAt: string; employee?: any; currentOwner?: any; context?: any[]; approvals?: any[]; attachments?: any[]; auditLogs?: any[] };
 type AttachmentUpload = { fileName: string; mimeType: string; contentBase64: string; isRequired: boolean };
+type ApprovalDecision = "approve" | "reject" | "send-back";
 type NavItem = { view: View; label: string };
 type DashboardKind = "employee" | "manager" | "hr" | "finance" | "departmentHead";
 
@@ -173,8 +174,9 @@ function App() {
     await refreshAll();
   }
 
-  async function decide(approvalId: string, decision: "approve" | "reject") {
-    await api(`/approvals/${approvalId}/${decision}`, { method: "POST", body: JSON.stringify({ comments: `${decision} from workflow console` }) });
+  async function decide(approvalId: string, decision: ApprovalDecision, comments?: string) {
+    const defaultComment = decision === "send-back" ? "Please provide more information for this request." : `${decision} from workflow console`;
+    await api(`/approvals/${approvalId}/${decision}`, { method: "POST", body: JSON.stringify({ comments: comments?.trim() || defaultComment }) });
     await refreshAll();
   }
 
@@ -320,14 +322,14 @@ function Tracking({ requests, selected, select }: { requests: RequestRecord[]; s
   return <div className="grid"><section><div className="section-heading"><h2>Request Tracking</h2><span>{requests.length} requests</span></div><div className="list">{requests.map((request) => <RequestRow key={request.id} request={request} active={selected?.id === request.id} onClick={() => select(request.id)} />)}</div></section><section><div className="section-heading"><h2>{selected?.id ?? "No request"} Lifecycle</h2>{selected && <Status status={selected.status} />}</div><div className="stage-track">{["Submitted", "Validated", "Pending Approval", "Processing", "Completed"].map((stage) => <div key={stage} className={stageClass(stage, selected?.status)}><strong>{stage}</strong><span>{stageHint(stage, selected)}</span></div>)}</div><div className="sla-panel"><Metric label="Current owner" value={selected?.currentOwner?.name ?? "None"} /><Metric label="SLA consumed" value={selected?.status === "Escalated" ? "100%" : "62%"} tone={selected?.status === "Escalated" ? "warn" : undefined} /><Metric label="Risk state" value={selected?.status === "Escalated" ? "Escalated" : selected?.priority === "High" ? "At Risk" : "Normal"} /></div><RequestDetail request={selected} /></section></div>;
 }
 
-function Approvals({ approvals, decide }: { approvals: any[]; decide: (id: string, decision: "approve" | "reject") => Promise<void> }) {
+function Approvals({ approvals, decide }: { approvals: any[]; decide: (id: string, decision: ApprovalDecision, comments?: string) => Promise<void> }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [approvalError, setApprovalError] = useState<string | null>(null);
-  async function handleDecision(approvalId: string, decision: "approve" | "reject") {
+  async function handleDecision(approvalId: string, decision: ApprovalDecision, comments?: string) {
     setBusyId(approvalId);
     setApprovalError(null);
     try {
-      await decide(approvalId, decision);
+      await decide(approvalId, decision, comments);
     } catch (error) {
       setApprovalError(error instanceof Error ? error.message : "Approval update failed");
     } finally {
@@ -337,13 +339,49 @@ function Approvals({ approvals, decide }: { approvals: any[]; decide: (id: strin
   return <section><div className="section-heading"><h2>Approval Inbox</h2><span>{approvals.length} assigned</span></div>{approvalError && <div className="alert">{approvalError}</div>}<div className="approval-grid">{approvals.map((approval) => <ApprovalCard key={approval.id} approval={approval} busy={busyId === approval.id} decide={handleDecision} />)}</div></section>;
 }
 
-function ApprovalCard({ approval, busy, decide }: { approval: any; busy: boolean; decide: (id: string, decision: "approve" | "reject") => Promise<void> }) {
+function ApprovalCard({ approval, busy, decide }: { approval: any; busy: boolean; decide: (id: string, decision: ApprovalDecision, comments?: string) => Promise<void> }) {
+  const [sendBackOpen, setSendBackOpen] = useState(false);
+  const [sendBackComment, setSendBackComment] = useState("Please add more description and supporting details for this request.");
   const employee = approval.request.employee;
   const context = approval.request.context ?? [];
   const contextItems = context.filter((item: any) => ["workload", "policy_route", "proof"].includes(item.key));
   const employeeEmail = employee?.email ?? context.find((item: any) => item.key === "employee_email")?.value ?? "No email on profile";
   const leaveBalance = (employee?.leaveBalances ?? []).map((item: any) => `${item.availableDays} ${item.leaveType} days`).join("; ") || "No balance record";
-  return <article className="approval"><div className="approval-top"><div><Status status={approval.status} /><h3>{approval.request.title}</h3><p>{employee?.name} · {approval.request.requestType} · {approval.request.priority}</p></div><span>{approval.stage}</span></div><div className="employee-summary"><div><span>Role</span><strong>{employee?.role?.name ?? employee?.designation ?? "Employee"}</strong></div><div><span>Department</span><strong>{employee?.department?.name ?? "Corporate"}</strong></div><div><span>Team</span><strong>{employee?.team?.name ?? "None"}</strong></div><div><span>Manager</span><strong>{employee?.manager?.name ?? "None"}</strong></div><div className="wide"><span>Email</span><strong>{employeeEmail}</strong></div></div><div className="approval-context">{contextItems.map((item: any) => <div key={`${approval.id}-${item.key}`}><span>{pretty(item.key)}</span><p>{item.value}</p></div>)}<div><span>Leave Balance</span><p>{leaveBalance}</p></div></div><AttachmentList attachments={approval.request.attachments ?? []} />{approval.comments && <p className="muted">{approval.comments}</p>}<div className="button-row"><button disabled={busy} onClick={() => void decide(approval.id, "approve")}>{busy ? "Saving..." : "Approve"}</button><button disabled={busy} className="danger" onClick={() => void decide(approval.id, "reject")}>Reject</button></div></article>;
+  const sendBackDisabled = busy || !sendBackComment.trim();
+  return (
+    <article className="approval">
+      <div className="approval-top">
+        <div><Status status={approval.status} /><h3>{approval.request.title}</h3><p>{employee?.name} · {approval.request.requestType} · {approval.request.priority}</p></div>
+        <span>{approval.stage}</span>
+      </div>
+      <div className="employee-summary">
+        <div><span>Role</span><strong>{employee?.role?.name ?? employee?.designation ?? "Employee"}</strong></div>
+        <div><span>Department</span><strong>{employee?.department?.name ?? "Corporate"}</strong></div>
+        <div><span>Team</span><strong>{employee?.team?.name ?? "None"}</strong></div>
+        <div><span>Manager</span><strong>{employee?.manager?.name ?? "None"}</strong></div>
+        <div className="wide"><span>Email</span><strong>{employeeEmail}</strong></div>
+      </div>
+      <div className="approval-context">
+        {contextItems.map((item: any) => <div key={`${approval.id}-${item.key}`}><span>{pretty(item.key)}</span><p>{item.value}</p></div>)}
+        <div><span>Leave Balance</span><p>{leaveBalance}</p></div>
+      </div>
+      <AttachmentList attachments={approval.request.attachments ?? []} />
+      {approval.comments && <p className="muted">{approval.comments}</p>}
+      {sendBackOpen && (
+        <div className="send-back-panel">
+          <label htmlFor={`send-back-${approval.id}`}>Message to requester</label>
+          <textarea id={`send-back-${approval.id}`} value={sendBackComment} onChange={(event) => setSendBackComment(event.target.value)} />
+          <p>The requester will see this message in their request timeline and can update the request details.</p>
+        </div>
+      )}
+      <div className="button-row">
+        <button disabled={busy} onClick={() => void decide(approval.id, "approve")}>{busy ? "Saving..." : "Approve"}</button>
+        <button disabled={busy} className="secondary" onClick={() => setSendBackOpen((open) => !open)}>{sendBackOpen ? "Cancel send back" : "Send back"}</button>
+        {sendBackOpen && <button disabled={sendBackDisabled} className="secondary" onClick={() => void decide(approval.id, "send-back", sendBackComment)}>Send message</button>}
+        <button disabled={busy} className="danger" onClick={() => void decide(approval.id, "reject")}>Reject</button>
+      </div>
+    </article>
+  );
 }
 
 function AttachmentList({ attachments }: { attachments: any[] }) {

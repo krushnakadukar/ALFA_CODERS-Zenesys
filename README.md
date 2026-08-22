@@ -16,21 +16,22 @@ OrgFlow is designed to simplify common company workflows such as:
 - Approval tracking
 - Team and department visibility
 
-The goal is to reduce manual coordination, improve approval transparency, and give different roles a clear view of the work they are responsible for.
+The goal is to reduce manual coordination, improve approval transparency, and give every role a clear view of the work they are responsible for.
 
 ## Key Features
 
 - Role-based dashboards for employees, managers, HR, finance, and department heads
 - Request creation and lifecycle tracking
 - Readable request timeline with routing summaries and event details
+- Request description visibility in detail and approval views
 - Approval inbox with approve, reject, and send-back actions
 - Send-back flow for approvers to request more information from employees
 - Persistent login session, active view, and selected request restore
+- Request Intake screen for classifying employee messages into structured request drafts
 - Organization hierarchy and reporting structure view
 - Resource utilization and capacity insights
 - Analytics for open requests, escalations, bottlenecks, and notifications
 - Governance view with role permissions and audit logs
-- AI-assisted intake for classifying employee request messages
 - Attachment support for required proofs and documents
 - SLA worker support for workflow monitoring and escalation
 
@@ -117,7 +118,7 @@ apps/
 - SLA and escalation handling
 - Resource allocation
 - Analytics and governance
-- AI intake and request classification
+- Request intake and message classification
 - Attachment storage metadata
 
 ## Development Workflow
@@ -127,16 +128,13 @@ apps/
 - Run `npm run test` when backend workflow logic changes.
 - Keep phase branches focused on one user-facing step at a time.
 - Use the GitHub pull request created for each phase branch to track review and merge status.
-## Current Implementation
 
-The current implementation includes the base monorepo structure, backend API, React workflow console, Prisma schema and migrations, seed data, tests, Docker Compose setup, an approval send-back workflow for requesting additional details from employees, and frontend persistence for restoring the signed-in session, active workspace view, and selected request after refresh, and readable timeline details for routed workflow events.
+## Combined Implementation Through Phase 8
+
+This combined update includes the base monorepo structure, backend API, React workflow console, Prisma schema and migrations, seed data, tests, Docker Compose setup, approval send-back handling, restored session state, readable workflow timelines, clearer Request Intake wording, and visible request descriptions in request detail and approval review screens.
 
 ## Repository
 
 ```text
 https://github.com/krushnakadukar/ALFA_CODERS-Zenesys.git
 ```
-
-
-
-

@@ -57,7 +57,7 @@ const baseNav: NavItem[] = [
   { view: "dashboard", label: "Dashboard" },
   { view: "requests", label: "Requests" },
   { view: "tracking", label: "Tracking" },
-  { view: "ai", label: "AI Intake" },
+  { view: "ai", label: "Request Intake" },
   { view: "org", label: "Organization" }
 ];
 
@@ -282,7 +282,7 @@ function Dashboard({ kind, me, analytics, requests, approvals, recommendations, 
 }
 
 function DashboardHero({ title, me, go }: { title: string; me: any; go: (view: View) => void }) {
-  return <section className="dashboard-hero"><div><p className="eyebrow">{title}</p><h2>{me?.name ?? "Signed in user"}</h2><p>{me?.designation ?? "Employee"} · {me?.department?.name ?? "Corporate"}</p></div><div className="button-row"><button onClick={() => go("requests")}>Apply Request</button><button onClick={() => go("tracking")}>Track Request</button><button onClick={() => go("ai")}>AI Intake</button></div></section>;
+  return <section className="dashboard-hero"><div><p className="eyebrow">{title}</p><h2>{me?.name ?? "Signed in user"}</h2><p>{me?.designation ?? "Employee"} · {me?.department?.name ?? "Corporate"}</p></div><div className="button-row"><button onClick={() => go("requests")}>Apply Request</button><button onClick={() => go("tracking")}>Track Request</button><button onClick={() => go("ai")}>Request Intake</button></div></section>;
 }
 
 function ProfilePanel({ me }: { me: any }) {
@@ -354,7 +354,7 @@ function NewRequest({ requestTypes, submit }: { requestTypes: any[]; submit: (pa
 
 function RequestDetail({ request }: { request?: RequestRecord }) {
   if (!request) return <section><p className="muted">No request selected.</p></section>;
-  return <section><div className="section-heading"><h2>{request.id}</h2><Status status={request.status} /></div><h3>{request.title}</h3><p className="muted">{request.requestType} · {request.priority} · Owner {request.currentOwner?.name ?? "Unassigned"}</p><div className="context-grid">{(request.context ?? []).map((item: any) => <div key={`${item.key}-${item.id}`}><span>{item.sourceType}</span><strong>{pretty(item.key)}</strong><p>{item.value}</p></div>)}</div><AttachmentList attachments={request.attachments ?? []} /><h4>Timeline</h4><ol className="timeline">{(request.auditLogs ?? []).map((item: any) => <li key={item.id}><strong>{prettyTimelineEvent(item.eventType)}</strong><span>{formatDate(item.eventAt)} · {item.actor?.name ?? "System"}</span><p>{timelineDetails(item, request)}</p></li>)}</ol></section>;
+  return <section><div className="section-heading"><h2>{request.id}</h2><Status status={request.status} /></div><h3>{request.title}</h3><p className="muted">{request.requestType} · {request.priority} · Owner {request.currentOwner?.name ?? "Unassigned"}</p><DescriptionBox text={request.reason} /><div className="context-grid">{(request.context ?? []).map((item: any) => <div key={`${item.key}-${item.id}`}><span>{item.sourceType}</span><strong>{pretty(item.key)}</strong><p>{item.value}</p></div>)}</div><AttachmentList attachments={request.attachments ?? []} /><h4>Timeline</h4><ol className="timeline">{(request.auditLogs ?? []).map((item: any) => <li key={item.id}><strong>{prettyTimelineEvent(item.eventType)}</strong><span>{formatDate(item.eventAt)} · {item.actor?.name ?? "System"}</span><p>{timelineDetails(item, request)}</p></li>)}</ol></section>;
 }
 
 function Tracking({ requests, selected, select }: { requests: RequestRecord[]; selected?: RequestRecord; select: (id: string) => void }) {
@@ -404,6 +404,7 @@ function ApprovalCard({ approval, busy, decide }: { approval: any; busy: boolean
         {contextItems.map((item: any) => <div key={`${approval.id}-${item.key}`}><span>{pretty(item.key)}</span><p>{item.value}</p></div>)}
         <div><span>Leave Balance</span><p>{leaveBalance}</p></div>
       </div>
+      <DescriptionBox text={approval.request.reason} />
       <AttachmentList attachments={approval.request.attachments ?? []} />
       {approval.comments && <p className="muted">{approval.comments}</p>}
       {sendBackOpen && (
@@ -423,6 +424,9 @@ function ApprovalCard({ approval, busy, decide }: { approval: any; busy: boolean
   );
 }
 
+function DescriptionBox({ text }: { text?: string | null }) {
+  return <div className="description-box"><span>Request description</span><p>{text?.trim() || "No description provided."}</p></div>;
+}
 function AttachmentList({ attachments }: { attachments: any[] }) {
   const uploaded = attachments.filter((item) => item.uploadStatus === "UPLOADED");
   return <div className="attachment-list"><div className="section-heading"><h4>Attachments</h4><span>{uploaded.length}</span></div>{uploaded.length ? uploaded.map((item) => <div key={item.id}><strong>{item.fileName}</strong><span>{item.mimeType ?? "file"} · {formatBytes(item.fileSizeBytes)}</span></div>) : <p className="muted">No attachments uploaded.</p>}</div>;
@@ -494,7 +498,7 @@ function Assistant({ api }: { api: (path: string, options?: RequestInit) => Prom
       setLoading(false);
     }
   }
-  return <div className="grid"><section><div className="section-heading"><h2>AI Intake</h2><span>advisory only</span></div><div className="form-stack"><label>Employee message<input value={prompt} onChange={(event) => setPrompt(event.target.value)} /></label><button type="button" disabled={loading} onClick={() => void classify()}>{loading ? "Classifying..." : "Classify request"}</button>{intakeError && <div className="alert">{intakeError}</div>}<div className="hint">AI classification is persisted behind the API boundary; business rules remain authoritative.</div></div></section><section><div className="section-heading"><h2>Structured Draft</h2><span>{output?.type ?? "Waiting"}</span></div><div className="context-grid"><div><span>Classification</span><strong>{output?.type ?? "None"}</strong><p>Confidence: {result ? `${Math.round((result.confidence ?? 0) * 100)}%` : "n/a"}</p></div><div><span>Recommended route</span><strong>{output?.route ?? "n/a"}</strong><p>Resolved from rules.</p></div><div><span>Fields</span><strong>{result?.validation?.status ?? "Dynamic schema"}</strong><p>{fields.join(", ") || "n/a"}</p></div></div>{result?.validation?.errors?.length > 0 && <div className="hint">Needs review: {result.validation.errors.join("; ")}</div>}</section></div>;
+  return <div className="grid"><section><div className="section-heading"><h2>Request Intake</h2><span>advisory only</span></div><div className="form-stack"><label>Employee message<input value={prompt} onChange={(event) => setPrompt(event.target.value)} /></label><button type="button" disabled={loading} onClick={() => void classify()}>{loading ? "Classifying..." : "Classify request"}</button>{intakeError && <div className="alert">{intakeError}</div>}<div className="hint">Message classification is saved by the API; business rules remain authoritative.</div></div></section><section><div className="section-heading"><h2>Structured Draft</h2><span>{output?.type ?? "Waiting"}</span></div><div className="context-grid"><div><span>Classification</span><strong>{output?.type ?? "None"}</strong><p>Confidence: {result ? `${Math.round((result.confidence ?? 0) * 100)}%` : "n/a"}</p></div><div><span>Recommended route</span><strong>{output?.route ?? "n/a"}</strong><p>Resolved from rules.</p></div><div><span>Fields</span><strong>{result?.validation?.status ?? "Dynamic schema"}</strong><p>{fields.join(", ") || "n/a"}</p></div></div>{result?.validation?.errors?.length > 0 && <div className="hint">Needs review: {result.validation.errors.join("; ")}</div>}</section></div>;
 }
 
 function Org({ orgTree, me }: { orgTree: any; me: any }) {
@@ -639,7 +643,7 @@ function stageHint(stage: string, request?: RequestRecord) {
 }
 
 function label(view: View) {
-  return ({ dashboard: "Dashboard", requests: "Requests", tracking: "Tracking", approvals: "Approvals", resources: "Resources", analytics: "Analytics", governance: "Governance", ai: "AI Intake", org: "Organization" })[view];
+  return ({ dashboard: "Dashboard", requests: "Requests", tracking: "Tracking", approvals: "Approvals", resources: "Resources", analytics: "Analytics", governance: "Governance", ai: "Request Intake", org: "Organization" })[view];
 }
 
 createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);

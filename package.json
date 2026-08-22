@@ -1,0 +1,27 @@
+{
+  "name": "orgflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @orgflow/api",
+    "dev:api": "npm run dev --workspace @orgflow/api",
+    "dev:web": "npm run dev --workspace @orgflow/web",
+    "worker:sla": "npm run worker:sla --workspace @orgflow/api",
+    "worker:sla:once": "npm run worker:sla:once --workspace @orgflow/api",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspace @orgflow/api",
+    "lint": "npm run lint --workspaces",
+    "prisma:generate": "npm run prisma:generate --workspace @orgflow/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace @orgflow/api",
+    "seed": "npm run seed --workspace @orgflow/api"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

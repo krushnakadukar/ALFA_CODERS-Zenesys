@@ -1,0 +1,497 @@
+// Production target schema draft for OrgFlow.
+// This file is intentionally separate from schema.prisma until the active
+// Prisma schema can be safely migrated and validated.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id            String         @id @map("organization_id") @db.VarChar(30)
+  name          String         @db.VarChar(150)
+  timezone      String         @default("UTC") @db.VarChar(64)
+  status        String         @default("Active") @db.VarChar(40)
+  businessUnits BusinessUnit[]
+  divisions     Division[]
+  departments   Department[]
+  teams         Team[]
+  employees     Employee[]
+  roles         Role[]
+  permissions   Permission[]
+  users         UserAccount[]
+  requestTypes  RequestType[]
+  workflows     WorkflowDefinition[]
+  requests      Request[]
+  resources     Resource[]
+  files         FileObject[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  slaPolicies   SlaPolicy[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@map("organizations")
+}
+
+model BusinessUnit {
+  id             String       @id @map("business_unit_id") @db.VarChar(40)
+  organizationId String       @map("organization_id") @db.VarChar(30)
+  code           String       @db.VarChar(40)
+  name           String       @db.VarChar(150)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  divisions      Division[]
+  departments    Department[]
+  employees      Employee[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("business_units")
+}
+
+model Division {
+  id             String       @id @map("division_id") @db.VarChar(40)
+  organizationId String       @map("organization_id") @db.VarChar(30)
+  businessUnitId String       @map("business_unit_id") @db.VarChar(40)
+  code           String       @db.VarChar(40)
+  name           String       @db.VarChar(150)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  businessUnit   BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  departments    Department[]
+  employees      Employee[]
+
+  @@unique([organizationId, businessUnitId, code])
+  @@index([organizationId])
+  @@index([businessUnitId])
+  @@map("divisions")
+}
+
+model Department {
+  id             String       @id @map("department_id") @db.VarChar(40)
+  organizationId String       @map("organization_id") @db.VarChar(30)
+  businessUnitId String?      @map("business_unit_id") @db.VarChar(40)
+  divisionId     String?      @map("division_id") @db.VarChar(40)
+  code           String       @db.VarChar(40)
+  name           String       @db.VarChar(150)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  businessUnit   BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+  division       Division?    @relation(fields: [divisionId], references: [id])
+  teams          Team[]
+  employees      Employee[]
+  requests       Request[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([businessUnitId])
+  @@index([divisionId])
+  @@map("departments")
+}
+
+model Team {
+  id             String       @id @map("team_id") @db.VarChar(40)
+  organizationId String       @map("organization_id") @db.VarChar(30)
+  departmentId   String       @map("department_id") @db.VarChar(40)
+  code           String       @db.VarChar(40)
+  name           String       @db.VarChar(150)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  department     Department   @relation(fields: [departmentId], references: [id])
+  employees      Employee[]
+  requests       Request[]
+
+  @@unique([organizationId, departmentId, code])
+  @@index([organizationId])
+  @@index([departmentId])
+  @@map("teams")
+}
+
+model Employee {
+  id                 String            @id @map("employee_id") @db.VarChar(40)
+  organizationId     String            @map("organization_id") @db.VarChar(30)
+  businessUnitId     String?           @map("business_unit_id") @db.VarChar(40)
+  divisionId         String?           @map("division_id") @db.VarChar(40)
+  departmentId       String?           @map("department_id") @db.VarChar(40)
+  teamId             String?           @map("team_id") @db.VarChar(40)
+  employeeNumber     String?           @map("employee_number") @db.VarChar(60)
+  name               String            @db.VarChar(150)
+  email              String            @db.VarChar(180)
+  designation        String?           @db.VarChar(120)
+  employmentStatus   String            @default("Active") @map("employment_status") @db.VarChar(40)
+  availabilityStatus String            @default("Available") @map("availability_status") @db.VarChar(40)
+  organization       Organization      @relation(fields: [organizationId], references: [id])
+  businessUnit       BusinessUnit?     @relation(fields: [businessUnitId], references: [id])
+  division           Division?         @relation(fields: [divisionId], references: [id])
+  department         Department?       @relation(fields: [departmentId], references: [id])
+  team               Team?             @relation(fields: [teamId], references: [id])
+  userAccount        UserAccount?
+  relationshipsFrom  OrgRelationship[] @relation("RelationshipSource")
+  relationshipsTo    OrgRelationship[] @relation("RelationshipTarget")
+  requests           Request[]         @relation("Requester")
+  ownedRequests      Request[]         @relation("CurrentOwner")
+  approvals          Approval[]
+  auditLogs          AuditLog[]
+
+  @@unique([organizationId, email])
+  @@unique([organizationId, employeeNumber])
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([teamId])
+  @@map("employees")
+}
+
+model OrgRelationship {
+  id               String    @id @map("relationship_id") @db.VarChar(40)
+  organizationId   String    @map("organization_id") @db.VarChar(30)
+  sourceEmployeeId String    @map("source_employee_id") @db.VarChar(40)
+  targetEmployeeId String    @map("target_employee_id") @db.VarChar(40)
+  type             String    @db.VarChar(60)
+  active           Boolean   @default(true)
+  startsAt         DateTime? @map("starts_at") @db.Date
+  endsAt           DateTime? @map("ends_at") @db.Date
+  sourceEmployee   Employee  @relation("RelationshipSource", fields: [sourceEmployeeId], references: [id])
+  targetEmployee   Employee  @relation("RelationshipTarget", fields: [targetEmployeeId], references: [id])
+
+  @@index([organizationId])
+  @@index([sourceEmployeeId])
+  @@index([targetEmployeeId])
+  @@index([type])
+  @@map("org_relationships")
+}
+
+model UserAccount {
+  id             String         @id @map("user_id") @db.VarChar(40)
+  organizationId String         @map("organization_id") @db.VarChar(30)
+  employeeId     String?        @unique @map("employee_id") @db.VarChar(40)
+  email          String         @db.VarChar(180)
+  passwordHash   String         @map("password_hash") @db.VarChar(255)
+  status         String         @default("Active") @db.VarChar(40)
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  employee       Employee?      @relation(fields: [employeeId], references: [id])
+  userRoles      UserRole[]
+  refreshTokens  RefreshToken[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@map("user_accounts")
+}
+
+model Role {
+  id             String           @id @map("role_id") @db.VarChar(40)
+  organizationId String           @map("organization_id") @db.VarChar(30)
+  name           String           @db.VarChar(120)
+  description    String?          @db.Text
+  active         Boolean          @default(true)
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  rolePermissions RolePermission[]
+  userRoles      UserRole[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+model Permission {
+  id             String           @id @map("permission_id") @db.VarChar(60)
+  organizationId String?          @map("organization_id") @db.VarChar(30)
+  key            String           @db.VarChar(120)
+  description    String           @db.VarChar(240)
+  organization   Organization?    @relation(fields: [organizationId], references: [id])
+  rolePermissions RolePermission[]
+
+  @@unique([organizationId, key])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.VarChar(40)
+  permissionId String     @map("permission_id") @db.VarChar(60)
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id             String      @id @map("user_role_id") @db.VarChar(40)
+  userId         String      @map("user_id") @db.VarChar(40)
+  roleId         String      @map("role_id") @db.VarChar(40)
+  organizationId String      @map("organization_id") @db.VarChar(30)
+  departmentId   String?     @map("department_id") @db.VarChar(40)
+  teamId         String?     @map("team_id") @db.VarChar(40)
+  active         Boolean     @default(true)
+  userAccount    UserAccount @relation(fields: [userId], references: [id])
+  role           Role        @relation(fields: [roleId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id          String      @id @map("token_id") @db.VarChar(40)
+  userId      String      @map("user_id") @db.VarChar(40)
+  tokenHash   String      @map("token_hash") @db.VarChar(255)
+  expiresAt   DateTime    @map("expires_at")
+  revokedAt   DateTime?   @map("revoked_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  userAccount UserAccount @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model RequestType {
+  id             String         @id @map("request_type_id") @db.VarChar(40)
+  organizationId String         @map("organization_id") @db.VarChar(30)
+  key            String         @db.VarChar(80)
+  name           String         @db.VarChar(120)
+  active         Boolean        @default(true)
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  fields         RequestField[]
+  workflows      WorkflowDefinition[]
+  requests       Request[]
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("request_types")
+}
+
+model RequestField {
+  id             String      @id @map("request_field_id") @db.VarChar(40)
+  requestTypeId  String      @map("request_type_id") @db.VarChar(40)
+  key            String      @db.VarChar(80)
+  label          String      @db.VarChar(120)
+  fieldType      String      @map("field_type") @db.VarChar(40)
+  required       Boolean     @default(false)
+  optionsJson    String?     @map("options_json") @db.Text
+  conditionsJson String?     @map("conditions_json") @db.Text
+  order          Int         @default(0) @map("field_order")
+  requestType    RequestType @relation(fields: [requestTypeId], references: [id])
+
+  @@unique([requestTypeId, key])
+  @@map("request_fields")
+}
+
+model WorkflowDefinition {
+  id             String         @id @map("workflow_id") @db.VarChar(40)
+  organizationId String         @map("organization_id") @db.VarChar(30)
+  requestTypeId  String         @map("request_type_id") @db.VarChar(40)
+  name           String         @db.VarChar(150)
+  version        Int            @default(1)
+  active         Boolean        @default(true)
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  requestType    RequestType    @relation(fields: [requestTypeId], references: [id])
+  steps          WorkflowStep[]
+
+  @@index([organizationId])
+  @@index([requestTypeId])
+  @@map("workflow_definitions")
+}
+
+model WorkflowStep {
+  id             String             @id @map("workflow_step_id") @db.VarChar(40)
+  workflowId     String             @map("workflow_id") @db.VarChar(40)
+  order          Int                @map("step_order")
+  name           String             @db.VarChar(120)
+  approvalMode   String             @default("Sequential") @map("approval_mode") @db.VarChar(40)
+  approverRuleJson String           @map("approver_rule_json") @db.Text
+  slaPolicyId    String?            @map("sla_policy_id") @db.VarChar(40)
+  workflow       WorkflowDefinition @relation(fields: [workflowId], references: [id])
+  approvals      Approval[]
+
+  @@index([workflowId])
+  @@map("workflow_steps")
+}
+
+model Request {
+  id             String           @id @map("request_id") @db.VarChar(40)
+  organizationId String           @map("organization_id") @db.VarChar(30)
+  requestTypeId  String           @map("request_type_id") @db.VarChar(40)
+  employeeId     String           @map("employee_id") @db.VarChar(40)
+  departmentId   String?          @map("department_id") @db.VarChar(40)
+  teamId         String?          @map("team_id") @db.VarChar(40)
+  currentOwnerId String?          @map("current_owner_id") @db.VarChar(40)
+  status         String           @db.VarChar(50)
+  priority       String           @db.VarChar(30)
+  title          String           @db.VarChar(200)
+  formSnapshotJson String         @map("form_snapshot_json") @db.Text
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  requestType    RequestType      @relation(fields: [requestTypeId], references: [id])
+  employee       Employee         @relation("Requester", fields: [employeeId], references: [id])
+  department     Department?      @relation(fields: [departmentId], references: [id])
+  team           Team?            @relation(fields: [teamId], references: [id])
+  currentOwner   Employee?        @relation("CurrentOwner", fields: [currentOwnerId], references: [id])
+  context        RequestContext[]
+  approvals      Approval[]
+  slaEvents      SlaEvent[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  files          FileObject[]
+  aiSuggestions  AiSuggestion[]
+
+  @@index([organizationId])
+  @@index([requestTypeId])
+  @@index([employeeId])
+  @@index([currentOwnerId])
+  @@map("requests")
+}
+
+model RequestContext {
+  id         BigInt  @id @default(autoincrement()) @map("context_id")
+  requestId  String  @map("request_id") @db.VarChar(40)
+  key        String  @db.VarChar(100)
+  valueJson  String  @map("value_json") @db.Text
+  sourceType String  @map("source_type") @db.VarChar(60)
+  request    Request @relation(fields: [requestId], references: [id])
+
+  @@index([requestId])
+  @@map("request_context")
+}
+
+model Approval {
+  id             String        @id @map("approval_id") @db.VarChar(40)
+  requestId      String        @map("request_id") @db.VarChar(40)
+  workflowStepId String?       @map("workflow_step_id") @db.VarChar(40)
+  approverId     String        @map("approver_id") @db.VarChar(40)
+  status         String        @db.VarChar(40)
+  comments       String?       @db.Text
+  actionAt       DateTime?     @map("action_at")
+  request        Request       @relation(fields: [requestId], references: [id])
+  workflowStep   WorkflowStep? @relation(fields: [workflowStepId], references: [id])
+  approver       Employee      @relation(fields: [approverId], references: [id])
+
+  @@index([requestId])
+  @@index([workflowStepId])
+  @@index([approverId])
+  @@map("approvals")
+}
+
+model SlaPolicy {
+  id                 String       @id @map("sla_policy_id") @db.VarChar(40)
+  organizationId     String       @map("organization_id") @db.VarChar(30)
+  name               String       @db.VarChar(120)
+  durationMinutes    Int          @map("duration_minutes")
+  reminderPercent    Int          @default(80) @map("reminder_percent")
+  escalationRuleJson String?      @map("escalation_rule_json") @db.Text
+  active             Boolean      @default(true)
+  organization       Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("sla_policies")
+}
+
+model SlaEvent {
+  id          String    @id @map("sla_event_id") @db.VarChar(40)
+  requestId   String    @map("request_id") @db.VarChar(40)
+  stage       String    @db.VarChar(120)
+  status      String    @db.VarChar(40)
+  deadlineAt  DateTime  @map("deadline_at")
+  triggeredAt DateTime? @map("triggered_at")
+  details     String?   @db.Text
+  request     Request   @relation(fields: [requestId], references: [id])
+
+  @@index([requestId])
+  @@index([status])
+  @@index([deadlineAt])
+  @@map("sla_events")
+}
+
+model Resource {
+  id             String       @id @map("resource_id") @db.VarChar(40)
+  organizationId String       @map("organization_id") @db.VarChar(30)
+  name           String       @db.VarChar(150)
+  type           String       @db.VarChar(80)
+  status         String       @db.VarChar(40)
+  metadataJson   String?      @map("metadata_json") @db.Text
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@map("resources")
+}
+
+model Notification {
+  id             String       @id @map("notification_id") @db.VarChar(40)
+  organizationId String       @map("organization_id") @db.VarChar(30)
+  recipientUserId String      @map("recipient_user_id") @db.VarChar(40)
+  requestId      String?      @map("request_id") @db.VarChar(40)
+  channel        String       @db.VarChar(40)
+  type           String       @db.VarChar(80)
+  message        String       @db.Text
+  deliveryStatus String       @default("Pending") @map("delivery_status") @db.VarChar(40)
+  readAt         DateTime?    @map("read_at")
+  retryCount     Int          @default(0) @map("retry_count")
+  lastError      String?      @map("last_error") @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  request        Request?     @relation(fields: [requestId], references: [id])
+
+  @@index([organizationId])
+  @@index([recipientUserId])
+  @@index([requestId])
+  @@map("notifications")
+}
+
+model FileObject {
+  id              String       @id @map("file_id") @db.VarChar(40)
+  organizationId  String       @map("organization_id") @db.VarChar(30)
+  requestId       String?      @map("request_id") @db.VarChar(40)
+  storageProvider String       @map("storage_provider") @db.VarChar(40)
+  storageKey      String       @map("storage_key") @db.VarChar(500)
+  fileName        String       @map("file_name") @db.VarChar(255)
+  mimeType        String       @map("mime_type") @db.VarChar(120)
+  sizeBytes       BigInt       @map("size_bytes")
+  checksum        String?      @db.VarChar(128)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  request         Request?     @relation(fields: [requestId], references: [id])
+
+  @@index([organizationId])
+  @@index([requestId])
+  @@map("file_objects")
+}
+
+model AiSuggestion {
+  id             String    @id @map("ai_suggestion_id") @db.VarChar(40)
+  organizationId String    @map("organization_id") @db.VarChar(30)
+  requestId      String?   @map("request_id") @db.VarChar(40)
+  employeeId     String?   @map("employee_id") @db.VarChar(40)
+  provider       String    @db.VarChar(80)
+  model          String    @db.VarChar(120)
+  capability     String    @db.VarChar(80)
+  prompt         String    @db.Text
+  outputJson     String    @map("output_json") @db.Text
+  confidence     Decimal?  @db.Decimal(5, 4)
+  accepted       Boolean?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  request        Request?  @relation(fields: [requestId], references: [id])
+
+  @@index([organizationId])
+  @@index([requestId])
+  @@index([employeeId])
+  @@map("ai_suggestions")
+}
+
+model AuditLog {
+  id             String       @id @map("audit_id") @db.VarChar(40)
+  organizationId String       @map("organization_id") @db.VarChar(30)
+  requestId      String?      @map("request_id") @db.VarChar(40)
+  actorId        String?      @map("actor_id") @db.VarChar(40)
+  eventType      String       @map("event_type") @db.VarChar(80)
+  eventAt        DateTime     @default(now()) @map("event_at")
+  detailsJson    String?      @map("details_json") @db.Text
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  request        Request?     @relation(fields: [requestId], references: [id])
+  actor          Employee?    @relation(fields: [actorId], references: [id])
+
+  @@index([organizationId])
+  @@index([requestId])
+  @@index([actorId])
+  @@map("audit_logs")
+}

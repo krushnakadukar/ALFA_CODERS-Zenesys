@@ -1,0 +1,17 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: orgflow-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: orgflow
+      MYSQL_DATABASE: employee_workflow_demo
+      MYSQL_USER: orgflow
+      MYSQL_PASSWORD: orgflow
+    ports:
+      - "3306:3306"
+    volumes:
+      - orgflow_mysql:/var/lib/mysql
+
+volumes:
+  orgflow_mysql:

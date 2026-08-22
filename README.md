@@ -120,6 +120,13 @@ apps/
 - AI intake and request classification
 - Attachment storage metadata
 
+## Development Workflow
+
+- Review each branch before merging.
+- Run `npm run lint` before every push.
+- Run `npm run test` when backend workflow logic changes.
+- Keep phase branches focused on one user-facing step at a time.
+- Use the GitHub pull request created for each phase branch to track review and merge status.
 ## Current Implementation
 
 The current implementation includes the base monorepo structure, backend API, React workflow console, Prisma schema and migrations, seed data, tests, Docker Compose setup, an approval send-back workflow for requesting additional details from employees, and frontend persistence for restoring the signed-in session, active workspace view, and selected request after refresh, and readable timeline details for routed workflow events.
@@ -129,6 +136,7 @@ The current implementation includes the base monorepo structure, backend API, Re
 ```text
 https://github.com/krushnakadukar/ALFA_CODERS-Zenesys.git
 ```
+
 
 
 
